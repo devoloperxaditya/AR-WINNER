@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wingo Game (Auto, Firebase Connected)</title>
+    <style>
+        body {
+            background-color: white;
+            color: #b30000;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 30px;
+        }
+        h1 {
+            color: #b30000;
+            font-size: 40px;
+        }
+        .btn {
+            background-color: #b30000;
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #ff4d4d;
+        }
+        #balance, #timer, #result {
+            font-size: 22px;
+            margin: 10px;
+        }
+        .history {
+            margin-top: 20px;
+            text-align: left;
+            display: inline-block;
+            border: 1px solid #b30000;
+            padding: 10px;
+            border-radius: 10px;
+        }
+    </style>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDykLjwicFmPloVcHortyFUymlWleivW5g",
+            authDomain: "earn-bd-19cec.firebaseapp.com",
+            projectId: "earn-bd-19cec",
+            storageBucket: "earn-bd-19cec.appspot.com",
+            messagingSenderId: "1055880850952",
+            appId: "1:1055880850952:web:466114b7610efbd46c6bbd"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let balance = 0;  // 🔴 Start balance at 0
+        let timer = 30;
+        let currentResult = null;
+        let history = [];
+
+        window.onload = function() {
+            document.getElementById('balance').innerText = "ব্যালান্স: " + balance + " টাকা";
+            startAutoRounds();
+            saveBalanceToFirebase(balance);  // Save initial balance to Firebase
+        }
+
+        function startAutoRounds() {
+            setInterval(() => {
+                currentResult = Math.random() < 0.5 ? "Big" : "Small";
+                history.unshift(currentResult);
+                if (history.length > 10) history.pop();
+                updateHistory();
+                document.getElementById('result').innerText = "ফলাফল: " + currentResult;
+                timer = 30;
+                saveResultToFirebase(currentResult);
+            }, 30000);
+            countdown();
+        }
+
+        function countdown() {
+            setInterval(() => {
+                document.getElementById('timer').innerText = timer + " সেকেন্ড বাকি";
+                timer--;
+                if (timer < 0) {
+                    timer = 30;
+                }
+            }, 1000);
+        }
+
+        function placeBet(type) {
+            const amount = parseInt(document.getElementById('amount').value);
+            if (amount > balance) {
+                alert("❌ যথেষ্ট ব্যালান্স নেই!");
+                return;
+            }
+            if (!currentResult) {
+                alert("⏳ রাউন্ড শুরু হচ্ছে, অপেক্ষা করো!");
+                return;
+            }
+            if (type === currentResult) {
+                balance += amount;
+                alert("🎉 তুমি জিতেছ! ব্যালান্স +" + amount);
+            } else {
+                balance -= amount;
+                alert("😢 তুমি হারেছ! ব্যালান্স -" + amount);
+            }
+            document.getElementById('balance').innerText = "ব্যালান্স: " + balance + " টাকা";
+            saveBalanceToFirebase(balance);
+        }
+
+        function updateHistory() {
+            const histElem = document.getElementById('history');
+            histElem.innerHTML = "";
+            history.forEach((res, index) => {
+                histElem.innerHTML += (index + 1) + ". " + res + "<br>";
+            });
+        }
+
+        function saveResultToFirebase(result) {
+            const roundRef = ref(db, 'wingo/lastResult');
+            set(roundRef, {
+                result: result,
+                time: Date.now()
+            });
+        }
+
+        function saveBalanceToFirebase(balance) {
+            const balanceRef = ref(db, 'wingo/userBalance');
+            set(balanceRef, {
+                balance: balance
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>🎰 Wingo Auto Game 🎰</h1>
+    <p id="balance">ব্যালান্স: </p>
+
+    <input type="number" id="amount" placeholder="বেট এমাউন্ট">
+    <button class="btn" onclick="placeBet('Big')">Big এ বেট করো</button>
+    <button class="btn" onclick="placeBet('Small')">Small এ বেট করো</button>
+
+    <p id="timer">⏰ 30 সেকেন্ড বাকি</p>
+    <p id="result">ফলাফল: ?</p>
+
+    <div class="history">
+        <h3>🕘 আগের ফলাফলসমূহ</h3>
+        <div id="history"></div>
+    </div>
+
+    <br><br>
+    <a href="index.html" style="color: #b30000;">🏠 হোমে ফিরে যাও</a>
+</body>
+</html>
+
+
